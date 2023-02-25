@@ -1,5 +1,4 @@
 use borderpatrol::BorderPatrol;
-use engine::Engine;
 
 mod borderpatrol;
 mod engine;
@@ -8,8 +7,9 @@ mod ml;
 fn main() {
     let game = Box::new(BorderPatrol::new());
 
-    // let agent = AgentNN::new(game);
+    // let mut agent = ml::AgentNN::new_with(game, 200);
+    // ml::Trainable::train(&mut agent);
 
-    let mut engine = Engine::new(game);
+    let mut engine = engine::Engine::new(game);
     engine.start();
 }

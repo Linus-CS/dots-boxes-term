@@ -32,16 +32,23 @@ impl AgentNN {
                 eps_decay: 0.999,
                 episodes: 500,
             },
-            nn: NN::new(&[100, 100, 100, 180]),
+            nn: NN::new(&[100, 100, 100, 400]),
             env,
         };
+    }
+
+    pub fn new_with(env: Box<dyn Environment<[u16; 100]>>, episodes: usize) -> AgentNN {
+        let mut agent = Self::new(env);
+        agent.hyper_parms.episodes = episodes;
+        agent
     }
 }
 
 impl Trainable for AgentNN {
     fn train(&mut self) {
         let mut rng = rand::thread_rng();
-        for _i in 0..self.hyper_parms.episodes {
+        for i in 0..self.hyper_parms.episodes {
+            println!("Episode {i}");
             let mut state = self.env.get_state();
             self.hyper_parms.eps *= self.hyper_parms.eps_decay;
             let mut running = false;

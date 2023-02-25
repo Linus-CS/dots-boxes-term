@@ -186,56 +186,44 @@ pub mod display {
 
     impl Game for BorderPatrol {
         fn init_screen(&mut self) -> String {
-            let mut content: String = format!("\n\n\x1B[1m\t\t\t\t\t\t\t\t   Borderpatrol\n\n\t\t\t\t\t\t        PlayerOne     {} - {}      PlayerTwo\n",
-            self.game_info.get_player_one_points(),
-            self.game_info.get_player_two_points()
-        );
-            content += "\t\t\t\t\t\t┌────┬────┬────┬────┬────┬────┬────┬────┬────┬────┐\n";
+            let mut content: String = format!(
+                "\n\n\x1B[1m{}   Borderpatrol\n\n{}        PlayerOne     {} - {}      PlayerTwo\n",
+                "\t".repeat(8),
+                "\t".repeat(6),
+                self.game_info.get_player_one_points(),
+                self.game_info.get_player_two_points()
+            );
+
+            content.push_str(&("\t".repeat(6) + "┌" + &"────┬".repeat(9) + "────┐\n"));
             let mut len = content.len();
             for r in 0..10 {
-                let mut box_row: String = "\t\t\t\t\t\t│ ".to_owned();
-                let mut line_row: String = "\t\t\t\t\t\t├".to_owned();
+                let mut box_row: String = "\t".repeat(6) + "│ ";
+                let mut line_row: String = "\t".repeat(6) + "├";
                 for c in 0..10 {
-                    box_row += self.get_box_display(r, c);
-                    box_row += " ";
-                    box_row += self.get_line_display(r, c, RIGHT);
-                    box_row += " ";
-                    line_row += self.get_line_display(r, c, BOTTOM);
-                    line_row += "┼";
+                    box_row.push_str(&(self.get_box_display(r, c).to_owned() + " "));
+                    box_row.push_str(&(self.get_line_display(r, c, RIGHT).to_owned() + " "));
+                    line_row.push_str(&(self.get_line_display(r, c, BOTTOM).to_owned() + "┼"));
                 }
                 box_row.pop();
                 box_row.pop();
                 line_row.pop();
-                content += &box_row;
-                content += "│\n";
+                content.push_str(&(box_row + "│\n"));
                 len = content.len();
-                content += &line_row;
-                content += "┤\n";
+                content.push_str(&(line_row + "┤\n"));
             }
             content.truncate(len - 1);
 
             self.horizontal_indices = Vec::new();
             self.vertical_indices = Vec::new();
 
-            content
-                .match_indices(LINES[0])
-                .for_each(|(index, _)| self.horizontal_indices.push(index));
-            content
-                .match_indices(LINES[4])
-                .for_each(|(index, _)| self.horizontal_indices.push(index));
-            content
-                .match_indices(LINES[8])
-                .for_each(|(index, _)| self.horizontal_indices.push(index));
-
-            content
-                .match_indices(LINES[5])
-                .for_each(|(index, _)| self.vertical_indices.push(index));
-            content
-                .match_indices(LINES[9])
-                .for_each(|(index, _)| self.vertical_indices.push(index));
-            content
-                .match_indices(LINES[1])
-                .for_each(|(index, _)| self.vertical_indices.push(index));
+            for (i, j) in vec![0, 4, 8].into_iter().zip(vec![5, 9, 1]) {
+                content
+                    .match_indices(LINES[i])
+                    .for_each(|(index, _)| self.horizontal_indices.push(index));
+                content
+                    .match_indices(LINES[j])
+                    .for_each(|(index, _)| self.vertical_indices.push(index));
+            }
 
             self.horizontal_indices.sort();
             self.horizontal_indices.splice(0..10, None);
@@ -256,8 +244,14 @@ pub mod display {
 
             println!("h: {:?}", self.horizontal_indices);
 
-            content +=
-            "\n\t\t\t\t\t\t└────┴────┴────┴────┴────┴────┴────┴────┴────┴────┘\n\n\n\n\n\n\n\n\n";
+            content.push_str(
+                &("\n".to_owned()
+                    + &"\t".repeat(6)
+                    + "└"
+                    + &"────┴".repeat(9)
+                    + "────┘"
+                    + &"\n".repeat(9)),
+            );
 
             return content;
         }
@@ -338,7 +332,7 @@ pub mod machine_learning {
             self.set_line(action, self.game_info.turn);
             let after = self.game_info.score[(PLAYER_ONE - player) as usize];
 
-            let mut reward = (before - after) as f64 * 0.05;
+            let mut reward = (after - before) as f64 * 0.05;
             let mut done = false;
 
             if after > 50 {
