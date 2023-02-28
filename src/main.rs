@@ -1,15 +1,18 @@
+#![allow(unused_imports)]
 use borderpatrol::BorderPatrol;
+use ml::{AgentNN, Trainable};
+use terminal_borderpatrol::display::TerminalBorderPatrol;
 
 mod borderpatrol;
 mod engine;
 mod ml;
+mod terminal_borderpatrol;
 
 fn main() {
-    let game = Box::new(BorderPatrol::new());
+    let mut agent = AgentNN::new_with(|| Box::new(BorderPatrol::new()), &[100, 100, 100, 180], 20);
+    agent.train();
 
-    // let mut agent = ml::AgentNN::new_with(game, 200);
-    // ml::Trainable::train(&mut agent);
-
-    let mut engine = engine::Engine::new(game);
+    let terminal_border_patrol = Box::new(TerminalBorderPatrol::with_player_two(Box::new(agent)));
+    let mut engine = engine::Engine::new(terminal_border_patrol);
     engine.start();
 }

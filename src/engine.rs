@@ -1,6 +1,9 @@
+#![allow(unused)]
 use console::Term;
 
 pub trait Game {
+    fn update(&mut self, content: &mut String);
+    fn wait_for_input(&self) -> bool;
     fn init_screen(&mut self) -> String;
     fn react(&mut self, content: &mut String, key: char) -> bool;
 }
@@ -21,20 +24,30 @@ impl Engine {
     }
 
     pub fn start(&mut self) {
+        self.scene.term.set_title("Terminal Engine");
         self.running = true;
         self.scene.init(&mut self.game);
 
         self.scene.render();
         while self.running {
-            let key = self.scene.term.read_char().expect("Could not read key.");
+            let key = if self.game.wait_for_input() {
+                Some(self.scene.term.read_char().expect("Could not read key."))
+            } else {
+                None
+            };
+
             match key {
-                'q' => self.running = false,
-                key => {
+                Some('q') => self.running = false,
+                Some(key) => {
                     let stay = self.game.react(&mut self.scene.current, key);
                     self.scene.render();
                     if !stay {
                         self.scene.undo();
                     }
+                }
+                _ => {
+                    self.game.update(&mut self.scene.current);
+                    self.scene.render();
                 }
             }
         }
