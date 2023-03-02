@@ -12,6 +12,7 @@ pub const BOTTOM: u8 = 0;
 pub struct GameInfo {
     pub score: [u8; 2],
     pub turn: u8,
+    pub finished: bool,
 }
 
 impl GameInfo {
@@ -19,6 +20,7 @@ impl GameInfo {
         return GameInfo {
             score: [0, 0],
             turn: PLAYER_ONE,
+            finished: false,
         };
     }
 

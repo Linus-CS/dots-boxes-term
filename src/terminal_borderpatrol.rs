@@ -285,7 +285,7 @@ pub mod machine_learning {
     };
 
     impl Environment<[u16; 100]> for BorderPatrol {
-        fn step(&mut self, action: usize) -> ([u16; 100], f64, bool) {
+        fn step(&mut self, action: usize) -> f64 {
             let player = self.game_info.turn;
 
             let before = self.game_info.get_points();
@@ -293,17 +293,24 @@ pub mod machine_learning {
             let after = self.game_info.score[(PLAYER_ONE - player) as usize];
 
             let mut reward = (after - before) as f64 * 0.05;
-            let mut done = false;
 
             if after > 50 {
-                done = true;
+                self.game_info.finished = true;
                 reward += 1.0;
             }
 
             if after == 50 && self.game_info.get_points() == 50 {
-                done = true;
+                self.game_info.finished = true;
             }
-            return (self.get_state(), reward, done);
+            return reward;
+        }
+
+        fn get_turn(&self) -> usize {
+            (PLAYER_ONE - self.game_info.turn) as usize
+        }
+
+        fn is_finished(&self) -> bool {
+            return self.game_info.finished;
         }
 
         fn get_state(&self) -> [u16; 100] {
