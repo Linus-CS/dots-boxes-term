@@ -9,6 +9,7 @@ pub const TOP: u8 = 2;
 pub const RIGHT: u8 = 1;
 pub const BOTTOM: u8 = 0;
 
+#[derive(Debug, Clone)]
 pub struct GameInfo {
     pub score: [u8; 2],
     pub turn: u8,
@@ -37,6 +38,7 @@ impl GameInfo {
     }
 }
 
+#[derive(Clone)]
 pub struct Board {
     pub layout: [u16; 100],
 }
@@ -45,10 +47,10 @@ impl Board {
     fn new() -> Board {
         Board {
             layout: [
-                204, 68, 68, 68, 68, 68, 68, 68, 68, 68, 68, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0,
-                0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0,
-                34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0,
-                0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 153, 17, 17, 17, 17, 17, 17,
+                204, 68, 68, 68, 68, 68, 68, 68, 68, 102, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0,
+                0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0,
+                0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 136, 0, 0,
+                0, 0, 0, 0, 0, 0, 34, 136, 0, 0, 0, 0, 0, 0, 0, 0, 34, 153, 17, 17, 17, 17, 17, 17,
                 17, 17, 51,
             ],
         }
@@ -63,10 +65,10 @@ impl Board {
     }
 }
 
+#[derive(Clone)]
 pub struct BorderPatrol {
     pub board: Board,
     pub game_info: GameInfo,
-    pub possible_actions: [bool; 180],
 }
 
 impl BorderPatrol {
@@ -74,8 +76,20 @@ impl BorderPatrol {
         BorderPatrol {
             board: Board::new(),
             game_info: GameInfo::new(),
-            possible_actions: [true; 180],
         }
+    }
+
+    pub fn get_line(&self, num: usize, player: u8) -> bool {
+        let box_num = num / 2;
+        let row = box_num / 10;
+        let col = box_num % 10;
+        let side = (num % 2).try_into().unwrap();
+
+        self.get_line_by(row, col, side, player)
+    }
+
+    pub fn get_line_by(&self, row: usize, column: usize, side: u8, player: u8) -> bool {
+        self.board.get_bit(row, column, side + (4 * (player % 2)))
     }
 
     pub fn set_line(&mut self, num: usize, player: u8) {
@@ -89,7 +103,6 @@ impl BorderPatrol {
 
     pub fn set_line_by(&mut self, row: usize, column: usize, side: u8, player: u8) {
         self.board.set_bit(row, column, side + (4 * (player % 2)));
-        self.possible_actions[row * 10 + column + side as usize] = false;
         self.check_box(row, column, player);
 
         let horizontal = (1 - side % 2) as i8;

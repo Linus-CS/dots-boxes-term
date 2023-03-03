@@ -140,7 +140,7 @@ pub mod display {
                 .collect();
         }
 
-        fn to_string(&self) -> String {
+        pub fn to_string(&self) -> String {
             let mut content: String = format!(
                 "\n\n\x1B[1m{}   Borderpatrol\n\n{}        PlayerOne     {} - {}      PlayerTwo\n",
                 "\t".repeat(8),
@@ -179,22 +179,45 @@ pub mod display {
 
             content
         }
+
+        fn check_victory(&self) -> Option<String> {
+            if self.border_patrol.game_info.get_player_one_points() > 50 {
+                return Some("\n".repeat(20) + &"\t".repeat(8) + "Player one won!");
+            }
+            if self.border_patrol.game_info.get_player_two_points() > 50 {
+                return Some("\n".repeat(20) + &"\t".repeat(8) + "Player two won!");
+            }
+
+            if self.border_patrol.game_info.get_player_one_points() == 50
+                && self.border_patrol.game_info.get_player_two_points() == 50
+            {
+                return Some("\n".repeat(20) + &"\t".repeat(8) + "Draw!");
+            }
+
+            None
+        }
     }
 
     impl Game for TerminalBorderPatrol {
-        fn update(&mut self, content: &mut String) {
+        fn update(&mut self, content: &mut String) -> bool {
+            if let Some(msg) = self.check_victory() {
+                *content = msg;
+                return false;
+            }
+
             if self.border_patrol.game_info.turn == PLAYER_ONE {
                 if let Some(player) = &self.player_one {
                     player.make_move(&mut self.border_patrol);
                 }
-                *content = self.to_string();
-                return;
+                *content = self.init_screen();
+                return true;
             }
 
             if let Some(player) = &self.player_two {
                 player.make_move(&mut self.border_patrol);
             }
-            *content = self.to_string();
+            *content = self.init_screen();
+            true
         }
 
         fn wait_for_input(&self) -> bool {
@@ -275,76 +298,15 @@ pub mod display {
     }
 }
 
-pub mod machine_learning {
-
-    use rand::seq::IteratorRandom;
-
-    use crate::{
-        borderpatrol::{BorderPatrol, PLAYER_ONE, PLAYER_TWO},
-        ml::Environment,
-    };
-
-    impl Environment<[u16; 100]> for BorderPatrol {
-        fn step(&mut self, action: usize) -> f64 {
-            let player = self.game_info.turn;
-
-            let before = self.game_info.get_points();
-            self.set_line(action, self.game_info.turn);
-            let after = self.game_info.score[(PLAYER_ONE - player) as usize];
-
-            let mut reward = (after - before) as f64 * 0.05;
-
-            if after > 50 {
-                self.game_info.finished = true;
-                reward += 1.0;
-            }
-
-            if after == 50 && self.game_info.get_points() == 50 {
-                self.game_info.finished = true;
-            }
-            return reward;
-        }
-
-        fn get_turn(&self) -> usize {
-            (PLAYER_ONE - self.game_info.turn) as usize
-        }
-
-        fn is_finished(&self) -> bool {
-            return self.game_info.finished;
-        }
-
-        fn get_state(&self) -> [u16; 100] {
-            self.board.layout
-        }
-
-        fn get_possible_actions(&self) -> &[bool] {
-            return self.possible_actions.as_slice();
-        }
-
-        fn random_action(&self) -> usize {
-            self.possible_actions
-                .iter()
-                .enumerate()
-                .filter(|&(_, x)| *x)
-                .choose(&mut rand::thread_rng())
-                .unwrap()
-                .0
-        }
-    }
-}
-
 pub mod players {
     use crate::{
-        borderpatrol::BorderPatrol,
-        ml::{AgentNN, Environment},
+        borderpatrol::{BorderPatrol, PLAYER_ONE, PLAYER_TWO},
+        ml::BorderPatrolAgent,
     };
 
     use super::display::Player;
 
-    impl<F, E> Player for AgentNN<F, E>
-    where
-        F: Fn() -> Box<dyn Environment<E>>,
-    {
+    impl Player for BorderPatrolAgent {
         fn init(&self) {}
 
         fn make_move(&self, border_patrol: &mut BorderPatrol) {
@@ -356,14 +318,15 @@ pub mod players {
                 .map(|x| x.try_into().unwrap())
                 .collect();
 
-            let possible = &border_patrol.possible_actions;
-
             let action = self
                 .nn
                 .run(&converted_state)
                 .into_iter()
                 .enumerate()
-                .filter(|&(i, _)| possible[i])
+                .filter(|&(i, _)| {
+                    !(border_patrol.get_line(i, PLAYER_ONE)
+                        || border_patrol.get_line(i, PLAYER_TWO))
+                })
                 .reduce(|acc, x| if acc.1 >= x.1 { acc } else { x })
                 .unwrap()
                 .0;

@@ -2,7 +2,7 @@
 use console::Term;
 
 pub trait Game {
-    fn update(&mut self, content: &mut String);
+    fn update(&mut self, content: &mut String) -> bool;
     fn wait_for_input(&self) -> bool;
     fn init_screen(&mut self) -> String;
     fn react(&mut self, content: &mut String, key: char) -> bool;
@@ -46,7 +46,7 @@ impl Engine {
                     }
                 }
                 _ => {
-                    self.game.update(&mut self.scene.current);
+                    self.running = self.game.update(&mut self.scene.current);
                     self.scene.render();
                 }
             }
