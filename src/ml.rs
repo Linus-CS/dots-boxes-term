@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::{
     fs::File,
     io::{Read, Write},
@@ -7,7 +9,10 @@ use std::{
 use nn::{HaltCondition, NN};
 use rand::{seq::IteratorRandom, Rng};
 
-use crate::borderpatrol::{BorderPatrol, PLAYER_ONE, PLAYER_TWO};
+use crate::{
+    borderpatrol::{BorderPatrol, PLAYER_ONE, PLAYER_TWO},
+    terminal_borderpatrol::display::Player,
+};
 
 pub struct HyperParameters {
     pub discount: f64,
@@ -46,6 +51,13 @@ impl BorderPatrolAgent {
         }
     }
 
+    pub fn new_with(shape: &[u32], hyper_parms: HyperParameters) -> BorderPatrolAgent {
+        BorderPatrolAgent {
+            hyper_parms,
+            nn: NN::new(shape),
+        }
+    }
+
     pub fn from_file(file_path: &str) -> BorderPatrolAgent {
         let path = Path::new(file_path);
         let mut file = match File::open(&path) {
@@ -70,12 +82,6 @@ impl BorderPatrolAgent {
             Ok(_) => println!("Wrote to {file_path}."),
             _ => panic!("Could not write to {file_path}"),
         };
-    }
-
-    pub fn new_with(shape: &[u32], episodes: usize) -> BorderPatrolAgent {
-        let mut agent = Self::new(shape);
-        agent.hyper_parms.episodes = episodes;
-        agent
     }
 
     fn get_action(&self, r: f64, env: &BorderPatrol, state: &Vec<f64>) -> usize {
@@ -141,12 +147,15 @@ impl BorderPatrolAgent {
 
                 actions[turn] = self.get_action(rng.gen_range(0.0..1.0), &env, &state);
                 rewards[turn] = env.step(actions[turn]);
+                rewards[(turn + 1) % 2] -= rewards[turn] / 10.0;
 
                 // Train neural network on the target value with the current state
-                self.nn
-                    .train(&[(state, target_vec)])
-                    .halt_condition(HaltCondition::Epochs(1))
-                    .go();
+                if turn == 0 {
+                    self.nn
+                        .train(&[(state, target_vec)])
+                        .halt_condition(HaltCondition::Epochs(1))
+                        .go();
+                }
 
                 state = self.convert_state(env.board.layout);
                 turn = env.get_turn();
@@ -200,5 +209,33 @@ impl BorderPatrol {
         }
 
         i + 1
+    }
+}
+
+impl Player for BorderPatrolAgent {
+    fn init(&mut self) {}
+
+    fn make_move(&self, border_patrol: &mut BorderPatrol) {
+        let converted_state: Vec<f64> = border_patrol
+            .board
+            .layout
+            .clone()
+            .into_iter()
+            .map(|x| x.try_into().unwrap())
+            .collect();
+
+        let action = self
+            .nn
+            .run(&converted_state)
+            .into_iter()
+            .enumerate()
+            .filter(|&(i, _)| {
+                !(border_patrol.get_line(i, PLAYER_ONE) || border_patrol.get_line(i, PLAYER_TWO))
+            })
+            .reduce(|acc, x| if acc.1 >= x.1 { acc } else { x })
+            .unwrap()
+            .0;
+
+        border_patrol.set_line(action, border_patrol.game_info.turn);
     }
 }

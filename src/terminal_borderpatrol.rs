@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod display {
     /*
                 top
@@ -33,7 +34,7 @@ pub mod display {
     ];
     const BOXES: [&str; 2] = ["██", "░░"];
     pub trait Player {
-        fn init(&self);
+        fn init(&mut self);
         fn make_move(&self, border_patrol: &mut BorderPatrol);
     }
 
@@ -294,44 +295,6 @@ pub mod display {
                 content.replace_range(index..(index + 3), "○");
             }
             false
-        }
-    }
-}
-
-pub mod players {
-    use crate::{
-        borderpatrol::{BorderPatrol, PLAYER_ONE, PLAYER_TWO},
-        ml::BorderPatrolAgent,
-    };
-
-    use super::display::Player;
-
-    impl Player for BorderPatrolAgent {
-        fn init(&self) {}
-
-        fn make_move(&self, border_patrol: &mut BorderPatrol) {
-            let converted_state: Vec<f64> = border_patrol
-                .board
-                .layout
-                .clone()
-                .into_iter()
-                .map(|x| x.try_into().unwrap())
-                .collect();
-
-            let action = self
-                .nn
-                .run(&converted_state)
-                .into_iter()
-                .enumerate()
-                .filter(|&(i, _)| {
-                    !(border_patrol.get_line(i, PLAYER_ONE)
-                        || border_patrol.get_line(i, PLAYER_TWO))
-                })
-                .reduce(|acc, x| if acc.1 >= x.1 { acc } else { x })
-                .unwrap()
-                .0;
-
-            border_patrol.set_line(action, border_patrol.game_info.turn);
         }
     }
 }
